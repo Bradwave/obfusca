@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Obfusca — Anonimizzatore verifiche PDF</title>
+<meta name="description" content="Anonimizzatore locale GDPR per verifiche scritte in PDF: oscuramento nomi, codici univoci, modalità batch e pagina singola, pronto per la correzione AI.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,500,0,0&display=block" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<!-- PDF.js (v3.11.174) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- pdf-lib (v1.17.1) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script defer src="js/state.js"></script>
+<script defer src="js/i18n.js"></script>
+<script defer src="js/viewer.js"></script>
+<script defer src="js/pdf.js"></script>
+<script defer src="js/ui.js"></script>
+<script defer src="js/main.js"></script>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1 class="word" aria-label="Obfusca">
+      <span class="k">o</span><span>b</span><span class="a">f</span><span>u</span><span class="b">s</span><span class="a">c</span><span class="page-anim" title="Pagina anonimizzata">a</span>
+    </h1>
+    <p class="tag-line" id="i18nTagline">Oscura i nomi dalle verifiche in PDF, posiziona micro-etichette discrete o anonimizza pagina per pagina per la correzione automatica AI.</p>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn lang-btn" id="langBtn" aria-label="Switch language IT/EN" title="Cambia lingua / Switch language">IT</button>
+    <button class="icon-btn" id="themeBtn" aria-label="Cambia tema chiaro/scuro" title="Tema chiaro / scuro"><span class="ms" id="themeIcon">dark_mode</span></button>
+    <button class="icon-btn" id="helpBtn" aria-label="Come funziona" title="Guida e scorciatoie"><span class="ms">help</span></button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- STAGE SINISTRO: Toolbar + Visore Interattivo (con Dropzone integrata) + Barra Rapida -->
+  <section class="stage">
+    <div class="toolbar card">
+      <button class="btn" id="btnOpenPdfToolbar" title="Apri un file PDF"><span class="ms">folder_open</span><span class="lbl">PDF</span></button>
+      <button class="btn" id="btnPrevTest" disabled title="Verifica precedente"><span class="ms">keyboard_double_arrow_left</span><span class="lbl" id="i18nPrevTestLbl">Ver.</span></button>
+      <button class="btn" id="btnPrevPage" disabled title="Pagina precedente (Freccia SX)"><span class="ms">chevron_left</span></button>
+      <span id="pageIndicator" style="font-weight:700;font-size:12px;padding:0 6px;min-width:92px;text-align:center">Pag. 0 / 0</span>
+      <button class="btn" id="btnNextPage" disabled title="Pagina successiva (Freccia DX)"><span class="ms">chevron_right</span></button>
+      <button class="btn" id="btnNextTest" disabled title="Verifica successiva"><span class="lbl" id="i18nNextTestLbl">Ver.</span><span class="ms">keyboard_double_arrow_right</span></button>
+
+      <span class="grow"></span>
+
+      <!-- Selettore modalità operativa -->
+      <div class="seg small" id="workModeSeg" title="Modalità di lavoro">
+        <button data-v="batch" class="on"><span class="ms">stacks</span><span id="i18nModeBatch">Batch fisso</span></button>
+        <button data-v="single"><span class="ms">edit_document</span><span id="i18nModeSingle">Pagina singola</span></button>
+      </div>
+
+      <!-- Zoom -->
+      <div class="seg small" id="zoomSeg" aria-label="Zoom">
+        <button data-v="1.1">75%</button>
+        <button data-v="1.45" class="on">100%</button>
+        <button data-v="1.9">130%</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap card" id="canvasWrap">
+      <input id="pdfFileInput" type="file" accept="application/pdf" hidden>
+
+      <!-- Readout flottante in stile Pendulum Lab -->
+      <div class="readout-holder" id="readoutHolder" hidden>
+        <div class="readout" id="readout"></div>
+      </div>
+
+      <!-- Unica dropzone principale / stato iniziale -->
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon"><span class="ms" style="font-size:28px;width:28px">cloud_upload</span></div>
+        <h2 id="i18nEmptyTitle">Trascina qui il PDF delle verifiche</h2>
+        <p id="i18nEmptyDesc">Oppure clicca per selezionare il file dal dispositivo. Puoi trascinare un nuovo PDF in qualsiasi momento o generare un documento di prova.</p>
+        <div class="row" style="justify-content:center">
+          <label for="pdfFileInput" class="btn primary" style="cursor:pointer"><span class="ms">upload_file</span><span id="i18nBtnUploadEmpty">Scegli file PDF</span></label>
+          <button class="btn warn" id="btnSampleEmpty"><span class="ms">auto_awesome</span><span id="i18nBtnSampleEmpty">Genera PDF di prova</span></button>
+        </div>
+      </div>
+
+      <!-- Canvas doppio (PDF + overlay interattivo con maniglie) -->
+      <div class="canvas-stage-inner" id="canvasInner" hidden>
+        <canvas id="pdfRenderCanvas"></canvas>
+        <canvas id="selectionOverlayCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Barra inferiore con controlli rapidi sulla pagina corrente -->
+    <div class="hint-bar card" id="quickBar">
+      <div class="row" style="gap:6px">
+        <span style="font-weight:700;font-size:11px;color:var(--muted)" id="i18nCurrPageLabel">PAGINA CORRENTE:</span>
+        <button class="lg on" id="qRoleFirst" title="Imposta questa pagina come 1ª pagina di una verifica (con oscuramento nome)">
+          <span class="dot-ind" style="background:var(--danger)"></span><span id="i18nQRoleFirst">1ª pag. (oscura nome)</span>
+        </button>
+        <button class="lg" id="qRoleSub" title="Imposta questa pagina come pagina successiva (applica solo micro-etichetta o nulla)">
+          <span class="dot-ind" style="background:var(--accent)"></span><span id="i18nQRoleSub">2ª+ pag. (seguito)</span>
+        </button>
+        <button class="lg" id="qRoleSkip" title="Ignora questa pagina (nessun box né timbro)">
+          <span class="dot-ind" style="background:var(--muted)"></span><span id="i18nQRoleSkip">Lascia intatta</span>
+        </button>
+      </div>
+      <div class="row" style="gap:6px">
+        <button class="btn" id="btnAddExtraMask" disabled title="Aggiungi un rettangolo bianco extra su questa pagina per coprire un secondo nome o firma"><span class="ms">add_box</span><span id="i18nBtnAddExtra">+ Box extra</span></button>
+        <button class="btn" id="btnClearExtraMasks" disabled title="Rimuovi i box extra di questa pagina"><span class="ms">ink_eraser</span><span id="i18nBtnClearExtra">Pulisci extra</span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PANNELLO DESTRO A SCHEDE: Setup · 2ª pag · Pagine · Esporta -->
+  <aside class="panel">
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-tab="setup" role="tab"><span class="ms">tune</span><span id="i18nTabSetup">Setup</span></button>
+      <button class="tab" data-tab="second" role="tab"><span class="ms">bookmark_manager</span><span id="i18nTabSecond">2ª pag.</span></button>
+      <button class="tab" data-tab="single" role="tab"><span class="ms">grid_view</span><span id="i18nTabPages">Pagine</span></button>
+      <button class="tab" data-tab="results" role="tab"><span class="ms">download_done</span><span id="i18nTabExport">Esporta</span></button>
+    </div>
+
+    <!-- TAB 1: SETUP -->
+    <div class="tabpane card" id="pane-setup">
+      <h3 class="grp"><span id="i18nSec2Title">1. Struttura e codici</span></h3>
+      <div class="ctl" id="batchPptControl">
+        <label for="pagesPerTest"><span id="i18nPptTitle">Facciate per verifica (batch)</span> <b id="pptLabel">2 pag.</b></label>
+        <div class="row">
+          <input type="range" id="pagesPerTest" min="1" max="12" step="1" value="2" style="flex:1">
+          <span id="detectedTestsCount" style="font-size:11.5px;font-weight:700;color:var(--accent)">—</span>
+        </div>
+        <p class="note" id="i18nPptNote">Se gli studenti hanno consegnato un numero variabile di fogli, passa alla modalità <b>Pagina singola</b> nella barra in alto o nella scheda <i>Pagine</i>.</p>
+      </div>
+
+      <div class="ctl">
+        <label id="i18nCodeFormatLabel">Formato codice identificativo</label>
+        <div class="seg" id="codeTypeSeg">
+          <button data-v="progressive" class="on" id="i18nCodeProg">Progressivo (VER-001)</button>
+          <button data-v="random" id="i18nCodeRand">Casuale (VER-A7X9K)</button>
+        </div>
+      </div>
+
+      <div class="ctl">
+        <label for="codePrefix"><span id="i18nPrefixLabel">Prefisso codice</span> <b id="prefixPreview">VER-001</b></label>
+        <input type="text" id="codePrefix" value="VER-" placeholder="Es. VER- o 3B-" style="width:100%">
+      </div>
+
+      <button class="tg" id="tgPrintCodeOnFirst" aria-pressed="true">
+        <span class="sw-dot" style="background:var(--danger)"></span>
+        <span class="txt"><span id="i18nTgPrintCodeTitle">Stampa codice nel box di 1ª pagina</span><small id="i18nTgPrintCodeSub">Se disattivato, applica solo una toppa bianca muta sul nome</small></span>
+        <span class="box"></span>
+      </button>
+
+      <button class="tg" id="tgShuffleTests" aria-pressed="false">
+        <span class="sw-dot" style="background:var(--tile2)"></span>
+        <span class="txt"><span id="i18nTgShuffleTitle">Mescola l'ordine delle verifiche</span><small id="i18nTgShuffleSub">Impedisce di risalire all'autore dall'ordine di scansione</small></span>
+        <span class="box"></span>
+      </button>
+
+      <h3 class="grp"><span id="i18nSec3Title">2. Sicurezza e risoluzione</span></h3>
+      <div class="ctl">
+        <label id="i18nSecMethodLabel">Metodo di oscuramento</label>
+        <div class="seg" id="securityModeSeg">
+          <button data-v="rasterize" class="on" id="i18nSecRaster">Rasterizza (sicuro)</button>
+          <button data-v="overlay" id="i18nSecOverlay">Overlay veloce</button>
+        </div>
+        <p class="note" id="securityNote"><b>Sicurezza massima:</b> i pixel sottostanti al rettangolo vengono fisicamente distrutti. È impossibile recuperare il nome dal PDF.</p>
+      </div>
+
+      <div class="ctl" id="dpiControl">
+        <label><span id="i18nDpiTitle">Nitidezza scansione / OCR AI</span> <b id="dpiLabel">2.0× (~150 DPI)</b></label>
+        <div class="seg small" id="dpiSeg">
+          <button data-v="1.5" id="i18nDpiLow">1.5× leggero</button>
+          <button data-v="2.0" class="on" id="i18nDpiStd">2.0× standard</button>
+          <button data-v="2.6" id="i18nDpiHigh">2.6× alta (AI OCR)</button>
+        </div>
+      </div>
+
+      <h3 class="grp"><span id="i18nSec4Title">3. Anteprima ritaglio nome</span><span id="coordsBadge" style="font-size:10px;color:var(--muted)"></span></h3>
+      <div class="crop-box">
+        <canvas id="cropPreviewCanvas" hidden></canvas>
+        <span id="cropPlaceholder" class="note">Trascina o ridimensiona il box rosso sulla 1ª pagina</span>
+      </div>
+
+      <div style="margin-top:12px">
+        <button class="btn primary" id="btnProcessPdf" disabled style="width:100%;justify-content:center;padding:10px;font-size:13.5px">
+          <span class="ms">auto_fix_high</span><span id="i18nBtnProcess">Anonimizza e genera codici</span>
+        </button>
+        <div class="prog-wrap" id="progressWrap" hidden>
+          <div class="prog-bar" id="progressBar"></div>
+          <div class="prog-lbl" id="progressText">Elaborazione... 0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: PERSONALIZZAZIONE SECONDE PAGINE -->
+    <div class="tabpane card" id="pane-second" hidden>
+      <h3 class="grp"><span id="i18nSecndTitle">Etichette sulle seconde pagine</span></h3>
+      <p class="note" id="i18nSecndDesc">Scegli come marcare le pagine successive alla prima (2ª, 3ª pagina, ecc.) per non coprire gli esercizi svolti dagli studenti.</p>
+
+      <div class="ctl">
+        <label id="i18nStampModeLabel">Modalità etichetta pagine successive</label>
+        <div class="seg" id="secondStampModeSeg" style="width:100%">
+          <button data-v="none" style="flex:1;justify-content:center" id="i18nStampNone">Nessuna</button>
+          <button data-v="minimal" class="on" style="flex:1;justify-content:center" id="i18nStampMin">Micro-testo</button>
+          <button data-v="box" style="flex:1;justify-content:center" id="i18nStampBox">Box bordato</button>
+        </div>
+      </div>
+
+      <div id="secondStampControls">
+        <div class="ctl">
+          <label for="stampScaleR"><span id="i18nStampScaleTitle">Dimensione etichetta / font</span> <b id="stampScaleL">75%</b></label>
+          <input type="range" id="stampScaleR" min="0.45" max="1.5" step="0.05" value="0.75">
+        </div>
+
+        <div class="ctl">
+          <label id="i18nStampPosLabel">Posizionamento rapido sul foglio</label>
+          <div class="seg small" id="stampPresetSeg">
+            <button data-v="tr" class="on" id="i18nPosTR">Alto DX</button>
+            <button data-v="tl" id="i18nPosTL">Alto SX</button>
+            <button data-v="tc" id="i18nPosTC">Alto centro</button>
+            <button data-v="br" id="i18nPosBR">Basso DX</button>
+            <button data-v="bl" id="i18nPosBL">Basso SX</button>
+          </div>
+          <p class="note" id="i18nStampDragNote">Puoi anche <b>trascinare e ridimensionare</b> direttamente il riquadro viola sul foglio quando visualizzi una 2ª pagina.</p>
+        </div>
+
+        <button class="tg" id="tgStampBg" aria-pressed="false">
+          <span class="sw-dot" style="background:var(--accent)"></span>
+          <span class="txt"><span id="i18nTgStampBgTitle">Sfondo bianco coprente sotto il codice</span><small id="i18nTgStampBgSub">Attivalo solo se il codice cade sopra righe o scritte</small></span>
+          <span class="box"></span>
+        </button>
+
+        <button class="tg" id="tgStampPageNum" aria-pressed="true">
+          <span class="sw-dot" style="background:var(--tile2)"></span>
+          <span class="txt"><span id="i18nTgStampPgTitle">Includi numero di pagina (es. VER-001 · P.2)</span><small id="i18nTgStampPgSub">Aiuta l'AI o il docente a ricostruire l'ordine delle facciate</small></span>
+          <span class="box"></span>
+        </button>
+      </div>
+
+      <div style="margin-top:14px;padding:10px;border:2px solid var(--ink);background:var(--surface2)">
+        <div style="font-weight:700;font-size:11.5px;margin-bottom:4px;display:flex;align-items:center;gap:5px">
+          <span class="ms" style="color:var(--accent)">tips_and_updates</span><span id="i18nAiTipTitle">Consiglio per la correzione AI</span>
+        </div>
+        <p class="note" id="i18nAiTipBody" style="margin:0">
+          La modalità <b>Micro-testo</b> senza bordo né sfondo (o posizionata nel margine inferiore) evita che i modelli Vision/LLM confondano l'etichetta con un esercizio o perdano testo scritto dallo studente in alto a destra.
+        </p>
+      </div>
+    </div>
+
+    <!-- TAB 3: MODALITÀ PAGINA SINGOLA / GESTIONE PAGINE -->
+    <div class="tabpane card" id="pane-single" hidden>
+      <h3 class="grp"><span id="i18nSingleTabTitle">Modalità pagina per pagina</span></h3>
+      <p class="note" id="i18nSingleTabDesc">Personalizza il comportamento di ogni singola pagina: puoi avere un posizionamento del nome diverso per ciascun foglio oppure definire manualmente dove inizia una nuova verifica.</p>
+
+      <button class="tg" id="tgIndependentRects" aria-pressed="false">
+        <span class="sw-dot" style="background:var(--danger)"></span>
+        <span class="txt"><span id="i18nTgIndepTitle">Rettangolo nome indipendente per pagina</span><small id="i18nTgIndepSub">Ogni pagina mantiene le proprie coordinate di oscuramento</small></span>
+        <span class="box"></span>
+      </button>
+
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="btnAllSinglePages"><span class="ms">burst_mode</span><span id="i18nBtnAllSingle">Tutte 1ª pagina (1 pag = 1 verifica)</span></button>
+        <button class="btn" id="btnResetBatchRoles"><span class="ms">restart_alt</span><span id="i18nBtnResetBatch">Ripristina batch</span></button>
+      </div>
+
+      <h3 class="grp"><span id="i18nPageMapTitle">Mappa interattiva delle pagine</span><span id="singleMapCount"></span></h3>
+      <p class="note" id="i18nPageMapDesc">Tocca o clicca una pagina per visualizzarla e cambiarne ruolo o posizionamento del box.</p>
+      <div class="page-list-grid" id="pageListGrid">
+        <span class="note" id="i18nPageMapEmpty">Carica un PDF nel riquadro principale per vedere la mappa delle pagine.</span>
+      </div>
+    </div>
+
+    <!-- TAB 4: RISULTATI, ESPORTAZIONE & LEGENDA -->
+    <div class="tabpane card" id="pane-results" hidden>
+      <div id="resultsEmptyNote">
+        <h3 class="grp"><span id="i18nResEmptyTitle">Nessuna elaborazione attiva</span></h3>
+        <p class="note" id="i18nResEmptyDesc">Configura il documento e premi <b>Anonimizza e genera codici</b> nella scheda <i>Setup</i> per ottenere i PDF, i file singoli per l'AI e la tabella di decodifica.</p>
+      </div>
+
+      <div id="resultsContent" hidden>
+        <h3 class="grp"><span id="i18nResReadyTitle">File pronti per il download</span></h3>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn primary" id="btnDownloadAnon" style="flex:1;justify-content:center">
+            <span class="ms">download</span>verifiche_anonime.pdf
+          </button>
+          <button class="btn warn" id="btnDownloadLegend" style="flex:1;justify-content:center">
+            <span class="ms">key</span>legenda_docente.pdf
+          </button>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn" id="btnDownloadSinglePdfs" style="flex:1;justify-content:center">
+            <span class="ms">folder_copy</span><span id="i18nBtnDlSingles">Scarica PDF singoli per codice</span>
+          </button>
+          <button class="btn" id="btnExportCsv" style="flex:1;justify-content:center">
+            <span class="ms">table_view</span><span id="i18nBtnDlCsv">Esporta CSV voti</span>
+          </button>
+        </div>
+
+        <h3 class="grp"><span id="i18nLegendTableTitle">Tabella di decodifica e voti</span><span id="legendCountBadge"></span></h3>
+        <p class="note" id="i18nLegendTableDesc">Digita il nome (se vuoi salvarlo nel CSV) e il voto accanto al ritaglio originale.</p>
+        <div style="overflow-x:auto">
+          <table class="ptable">
+            <thead>
+              <tr>
+                <th id="i18nThCode">Codice</th>
+                <th id="i18nThCrop">Ritaglio nome</th>
+                <th id="i18nThGrade">Studente / voto</th>
+              </tr>
+            </thead>
+            <tbody id="legendTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<!-- Prompt discreto al primo avvio sull'elaborazione 100% locale -->
+<div class="privacy-prompt" id="privacyPrompt" role="region" aria-label="Privacy">
+  <span class="ms">shield_lock</span>
+  <p id="privacyPromptText"><b>100% locale e privato:</b> anche se Obfusca è una web app, tutta l'elaborazione avviene nella memoria del tuo browser. Nessun PDF o dato degli studenti viene mai caricato in rete.</p>
+  <button type="button" class="btn primary" id="privacyPromptClose" onclick="this.parentElement.hidden=true;this.parentElement.style.display='none';try{localStorage.setItem('obfusca_privacy_ack','1')}catch(e){}" style="min-height:28px;padding:3px 10px;font-size:11px;flex:none">Ho capito</button>
+</div>
+
+<!-- Toast di notifica -->
+<div class="toast" id="toast" role="status"></div>
+
+<!-- Dialog Guida -->
+<dialog id="helpDialog">
+  <div class="word dlg-word" aria-hidden="true">
+    <span class="k">o</span><span>b</span><span class="a">f</span><span>u</span><span class="b">s</span><span class="a">c</span><span class="page-anim">a</span>
+  </div>
+  <h2 id="i18nHelpTitle">Come funziona Obfusca</h2>
+  <p id="i18nHelpP1"><b>1. Oscura il nome sulla 1ª pagina.</b> Trascina o ridimensiona il rettangolo rosso tramite i quadratini agli angoli per coprire nome e cognome. Puoi spostarlo liberamente o disegnarne uno nuovo nello spazio libero.</p>
+  <h3 id="i18nHelpH2">Controllo totale sulle seconde pagine</h3>
+  <ul id="i18nHelpUl1">
+    <li><b>Nessuna</b>: lascia le seconde pagine completamente intatte senza alcun timbro.</li>
+    <li><b>Micro-testo discreto</b>: stampa solo il codice in piccolo (senza grande riquadro) dove preferisci, regolandone la grandezza con lo slider o trascinandolo sul foglio.</li>
+    <li><b>Box bordato</b>: applica un'etichetta riquadrata ridimensionabile e riposizionabile col mouse.</li>
+  </ul>
+  <h3 id="i18nHelpH3">Modalità batch vs pagina singola</h3>
+  <ul id="i18nHelpUl2">
+    <li><b>Batch fisso</b>: imposta quante facciate ha ogni compito (es. 2 pagine) e applica la regola a tutto il plico.</li>
+    <li><b>Pagina singola</b>: decidi pagina per pagina quale foglio è l'inizio di una nuova verifica (<i>1ª pag.</i>), quale è un foglio di seguito (<i>2ª+ pag.</i>) e quale va lasciato intatto, con possibilità di <b>rettangoli indipendenti</b> su ogni pagina e <b>box extra</b> per oscurare firme aggiuntive.</li>
+  </ul>
+  <h3 id="i18nHelpH4">Scorciatoie da tastiera</h3>
+  <p id="i18nHelpKeys"><kbd>←</kbd> / <kbd>→</kbd> cambia pagina · <kbd>1</kbd> imposta come 1ª pagina · <kbd>2</kbd> imposta come 2ª+ pagina · <kbd>0</kbd> lascia intatta.</p>
+  <div class="row" style="margin-top:14px;justify-content:flex-end">
+    <button class="btn primary" id="helpCloseBtn">Chiudi</button>
+  </div>
+</dialog>
+
+</body>
+</html>
