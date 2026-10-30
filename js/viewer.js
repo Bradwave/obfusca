@@ -48,14 +48,16 @@ function updateUIState() {
       autoOpt.value = 'auto';
       autoOpt.textContent = autoLbl;
       els.qTestAssign.appendChild(autoOpt);
-      for (let i = 1; i <= groups.length; i++) {
+      for (let i = 0; i < groups.length; i++) {
+        const g = groups[i];
         const opt = document.createElement('option');
-        opt.value = String(i);
-        opt.textContent = `→ ${vLbl} #${i} (P.${groups[i - 1].firstPageNum})`;
+        opt.value = String(g.firstPageNum);
+        opt.textContent = `→ ${vLbl} #${i + 1} (P.${g.firstPageNum})`;
         els.qTestAssign.appendChild(opt);
       }
-      const hasValidAssign = cfg.assignedTest !== null && cfg.assignedTest !== undefined && cfg.assignedTest >= 1 && cfg.assignedTest <= groups.length;
-      els.qTestAssign.value = hasValidAssign ? String(cfg.assignedTest) : 'auto';
+      const validFirsts = groups.map(g => g.firstPageNum);
+      const hasValidAssign = cfg.assignedFirstPage !== null && cfg.assignedFirstPage !== undefined && validFirsts.includes(Number(cfg.assignedFirstPage));
+      els.qTestAssign.value = hasValidAssign ? String(cfg.assignedFirstPage) : 'auto';
     }
   }
 
@@ -68,7 +70,7 @@ function updateUIState() {
     ? t('roleFirstFull')
     : (cfg.role === 'subsequent' ? `${t('roleSubFull')} (P.${ctxInfo.pageInTest} · ${state.secondPageStamp.mode})` : t('roleSkipFull'));
 
-  const manualBadge = (cfg.role !== 'first' && cfg.assignedTest !== null && cfg.assignedTest !== undefined)
+  const manualBadge = (cfg.role !== 'first' && cfg.assignedFirstPage !== null && cfg.assignedFirstPage !== undefined)
     ? ` <span style="opacity:.85">⇄</span>`
     : '';
 
@@ -84,6 +86,7 @@ function updateUIState() {
   `;
 
   renderPageMapGrid(groups);
+  renderTestOrderList(groups);
 }
 
 function renderPageMapGrid(groups) {
@@ -93,7 +96,7 @@ function renderPageMapGrid(groups) {
   const pageToTest = {};
   groups.forEach((g, idx) => {
     g.pages.forEach((pObj, pIdx) => {
-      pageToTest[pObj.pageNum] = { testIdx: idx + 1, pInTest: pIdx + 1 };
+      pageToTest[pObj.pageNum] = { testIdx: idx + 1, pInTest: pIdx + 1, firstPageNum: g.firstPageNum };
     });
   });
 
@@ -102,7 +105,7 @@ function renderPageMapGrid(groups) {
 
   for (let p = 1; p <= state.totalPages; p++) {
     const cfg = state.pageConfigs[p];
-    const info = pageToTest[p] || { testIdx: 1, pInTest: 1 };
+    const info = pageToTest[p] || { testIdx: 1, pInTest: 1, firstPageNum: 1 };
     const chip = document.createElement('div');
     chip.className = 'page-chip' + (p === state.currentPage ? ' active' : '');
     chip.setAttribute('role', 'button');
@@ -117,9 +120,10 @@ function renderPageMapGrid(groups) {
       assignHtml = `<small>${vfx} #${info.testIdx} (P.1)</small>`;
     } else {
       let opts = `<option value="auto">${vfx} #${info.testIdx} (auto)</option>`;
-      for (let i = 1; i <= groups.length; i++) {
-        const sel = (cfg.assignedTest === i) ? ' selected' : '';
-        opts += `<option value="${i}"${sel}>→ ${vfx} #${i}</option>`;
+      for (let i = 0; i < groups.length; i++) {
+        const g = groups[i];
+        const sel = (Number(cfg.assignedFirstPage) === g.firstPageNum) ? ' selected' : '';
+        opts += `<option value="${g.firstPageNum}"${sel}>→ ${vfx} #${i + 1}</option>`;
       }
       assignHtml = `<select class="chip-assign" data-page="${p}" title="${t('assignTooltip')}">${opts}</select>`;
     }
@@ -143,7 +147,7 @@ function renderPageMapGrid(groups) {
       selEl.addEventListener('change', (e) => {
         e.stopPropagation();
         const val = e.target.value;
-        cfg.assignedTest = val === 'auto' ? null : parseInt(val, 10);
+        cfg.assignedFirstPage = val === 'auto' ? null : parseInt(val, 10);
         updateUIState();
         drawSelectionOverlay();
       });
@@ -151,6 +155,104 @@ function renderPageMapGrid(groups) {
 
     els.pageListGrid.appendChild(chip);
   }
+}
+
+function renderTestOrderList(groups) {
+  if (!els.testOrderList || !state.totalPages) return;
+  els.testOrderList.innerHTML = '';
+
+  const vfx = state.lang === 'en' ? 'Exam' : 'Verifica';
+  const pfx = state.lang === 'en' ? 'Pg.' : 'Pag.';
+
+  groups.forEach((g, gIdx) => {
+    const card = document.createElement('div');
+    card.className = 'test-order-card';
+
+    const sampleCode = state.codeType === 'progressive'
+      ? `${state.codePrefix}${String(gIdx + 1).padStart(3, '0')}`
+      : `${vfx} #${gIdx + 1}`;
+
+    const head = document.createElement('div');
+    head.className = 'test-order-head';
+    head.innerHTML = `
+      <div class="test-order-title">
+        <span class="test-order-badge">#${gIdx + 1}</span>
+        <span>${sampleCode}</span>
+        <span class="note" style="margin:0">(${g.pages.length}p)</span>
+      </div>
+      <div class="order-btns">
+        <button type="button" class="mini-btn btn-test-up" title="${t('moveTestUp')}" ${gIdx === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" class="mini-btn btn-test-down" title="${t('moveTestDown')}" ${gIdx === groups.length - 1 ? 'disabled' : ''}>↓</button>
+      </div>
+    `;
+
+    const btnUp = head.querySelector('.btn-test-up');
+    const btnDown = head.querySelector('.btn-test-down');
+    if (btnUp) {
+      btnUp.addEventListener('click', () => {
+        moveTestGroup(gIdx, gIdx - 1);
+        updateUIState();
+        drawSelectionOverlay();
+      });
+    }
+    if (btnDown) {
+      btnDown.addEventListener('click', () => {
+        moveTestGroup(gIdx, gIdx + 1);
+        updateUIState();
+        drawSelectionOverlay();
+      });
+    }
+
+    const pagesRow = document.createElement('div');
+    pagesRow.className = 'test-pages-row';
+
+    g.pages.forEach((pObj, pIdx) => {
+      const pill = document.createElement('div');
+      pill.className = 'test-page-pill' + (pObj.pageNum === state.currentPage ? ' active' : '');
+      const roleDot = pObj.role === 'first' ? '🔴' : (pObj.role === 'subsequent' ? '🟣' : '⚪');
+      const canMoveLeft = pIdx > 0;
+      const canMoveRight = pIdx < g.pages.length - 1;
+
+      pill.innerHTML = `
+        ${g.pages.length > 1 ? `<button type="button" class="mini-btn btn-pg-left" title="${t('movePageLeft')}" ${!canMoveLeft ? 'disabled' : ''}>←</button>` : ''}
+        <button type="button" class="pg-jump" title="${pfx} ${pObj.pageNum}">${roleDot} ${pfx}${pObj.pageNum} <small style="opacity:.75">(P.${pIdx + 1})</small></button>
+        ${g.pages.length > 1 ? `<button type="button" class="mini-btn btn-pg-right" title="${t('movePageRight')}" ${!canMoveRight ? 'disabled' : ''}>→</button>` : ''}
+      `;
+
+      const jumpBtn = pill.querySelector('.pg-jump');
+      if (jumpBtn) {
+        jumpBtn.addEventListener('click', () => {
+          state.currentPage = pObj.pageNum;
+          renderCurrentPage();
+          updateUIState();
+        });
+      }
+
+      const leftBtn = pill.querySelector('.btn-pg-left');
+      if (leftBtn) {
+        leftBtn.addEventListener('click', () => {
+          movePageWithinGroup(g.firstPageNum, pIdx, pIdx - 1);
+          updateUIState();
+          drawSelectionOverlay();
+        });
+      }
+
+      const rightBtn = pill.querySelector('.btn-pg-right');
+      if (rightBtn) {
+        rightBtn.addEventListener('click', () => {
+          movePageWithinGroup(g.firstPageNum, pIdx, pIdx + 1);
+          updateUIState();
+          drawSelectionOverlay();
+        });
+      }
+
+      pagesRow.appendChild(pill);
+    });
+
+    card.appendChild(head);
+    card.appendChild(pagesRow);
+    els.testOrderList.appendChild(card);
+  });
 }
 
 async function renderCurrentPage() {

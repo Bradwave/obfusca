@@ -103,8 +103,13 @@ function applyLanguage() {
   $('i18nBtnResetBatch').textContent = t('btnResetBatch');
   $('i18nPageMapTitle').textContent = t('pageMapTitle');
   $('i18nPageMapDesc').textContent = t('pageMapDesc');
+  if ($('i18nTestOrderTitle')) $('i18nTestOrderTitle').textContent = t('testOrderTitle');
+  if ($('i18nTestOrderDesc')) $('i18nTestOrderDesc').textContent = t('testOrderDesc');
   if (!state.totalPages && $('i18nPageMapEmpty')) {
     $('i18nPageMapEmpty').textContent = t('pageMapEmpty');
+  }
+  if (!state.totalPages && $('i18nTestOrderEmpty')) {
+    $('i18nTestOrderEmpty').textContent = t('testOrderEmpty');
   }
 
   $('i18nResEmptyTitle').textContent = t('resEmptyTitle');
@@ -160,7 +165,7 @@ function setCurrentPageRole(role) {
   const cfg = getCurrentPageConfig();
   cfg.role = role;
   if (role === 'first') {
-    cfg.assignedTest = null;
+    cfg.assignedFirstPage = null;
   }
   updateUIState();
   drawSelectionOverlay();
@@ -359,7 +364,7 @@ function initUI() {
       if (!state.pdfDoc) return;
       const cfg = getCurrentPageConfig();
       const val = e.target.value;
-      cfg.assignedTest = (val === 'auto' || val === 'first') ? null : parseInt(val, 10);
+      cfg.assignedFirstPage = (val === 'auto' || val === 'first') ? null : parseInt(val, 10);
       updateUIState();
       drawSelectionOverlay();
     });
@@ -393,9 +398,11 @@ function initUI() {
     if (!state.pdfDoc) return;
     state.pagesPerTest = 1;
     els.pagesPerTest.value = 1;
+    state.testOrder = [];
+    state.groupPageOrders = {};
     for (let p = 1; p <= state.totalPages; p++) {
       state.pageConfigs[p].role = 'first';
-      state.pageConfigs[p].assignedTest = null;
+      state.pageConfigs[p].assignedFirstPage = null;
     }
     updateUIState();
     drawSelectionOverlay();
