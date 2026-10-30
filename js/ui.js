@@ -40,6 +40,7 @@ function applyLanguage() {
   $('i18nQRoleFirst').textContent = t('qRoleFirst');
   $('i18nQRoleSub').textContent = t('qRoleSub');
   $('i18nQRoleSkip').textContent = t('qRoleSkip');
+  if ($('i18nQAssignLbl')) $('i18nQAssignLbl').textContent = t('qAssignLbl');
   $('i18nBtnAddExtra').textContent = t('btnAddExtra');
   $('i18nBtnClearExtra').textContent = t('btnClearExtra');
 
@@ -59,6 +60,8 @@ function applyLanguage() {
   $('i18nTgPrintCodeSub').textContent = t('tgPrintCodeSub');
   $('i18nTgShuffleTitle').textContent = t('tgShuffleTitle');
   $('i18nTgShuffleSub').textContent = t('tgShuffleSub');
+  if ($('i18nTgRegroupTitle')) $('i18nTgRegroupTitle').textContent = t('tgRegroupTitle');
+  if ($('i18nTgRegroupSub')) $('i18nTgRegroupSub').textContent = t('tgRegroupSub');
   $('i18nSec3Title').textContent = t('sec3Title');
   $('i18nSecMethodLabel').textContent = t('secMethodLabel');
   $('i18nSecRaster').textContent = t('secRaster');
@@ -156,6 +159,9 @@ function setCurrentPageRole(role) {
   if (!state.pdfDoc) return;
   const cfg = getCurrentPageConfig();
   cfg.role = role;
+  if (role === 'first') {
+    cfg.assignedTest = null;
+  }
   updateUIState();
   drawSelectionOverlay();
   updateCropPreview();
@@ -291,6 +297,10 @@ function initUI() {
     state.shuffleTests = val;
   });
 
+  bindToggle(els.tgRegroupPages, (val) => {
+    state.regroupPages = val;
+  });
+
   bindSeg(els.securityModeSeg, (val) => {
     state.securityMode = val;
     els.securityNote.innerHTML = val === 'rasterize' ? t('secNoteRaster') : t('secNoteOverlay');
@@ -344,6 +354,17 @@ function initUI() {
   els.qRoleSub.addEventListener('click', () => setCurrentPageRole('subsequent'));
   els.qRoleSkip.addEventListener('click', () => setCurrentPageRole('skip'));
 
+  if (els.qTestAssign) {
+    els.qTestAssign.addEventListener('change', (e) => {
+      if (!state.pdfDoc) return;
+      const cfg = getCurrentPageConfig();
+      const val = e.target.value;
+      cfg.assignedTest = (val === 'auto' || val === 'first') ? null : parseInt(val, 10);
+      updateUIState();
+      drawSelectionOverlay();
+    });
+  }
+
   els.btnAddExtraMask.addEventListener('click', () => {
     if (!state.pdfDoc) return;
     state.addingExtraMaskMode = !state.addingExtraMaskMode;
@@ -374,6 +395,7 @@ function initUI() {
     els.pagesPerTest.value = 1;
     for (let p = 1; p <= state.totalPages; p++) {
       state.pageConfigs[p].role = 'first';
+      state.pageConfigs[p].assignedTest = null;
     }
     updateUIState();
     drawSelectionOverlay();
@@ -464,11 +486,12 @@ function initUI() {
     const studentInputs = els.legendTableBody.querySelectorAll('.inp-student');
     const gradeInputs = els.legendTableBody.querySelectorAll('.inp-grade');
 
-    const rows = [['Code', 'Original_Page', 'Pages_Count', 'Student_Name', 'Grade_Notes']];
+    const rows = [['Code', 'Original_Pages', 'Pages_Count', 'Student_Name', 'Grade_Notes']];
     state.legendItems.forEach((item, idx) => {
       const stName = (studentInputs[idx]?.value || '').replace(/"/g, '""');
       const stGrade = (gradeInputs[idx]?.value || '').replace(/"/g, '""');
-      rows.push([item.code, item.firstPageNum, item.pages.length, `"${stName}"`, `"${stGrade}"`]);
+      const pagesStr = item.pages.map(p => p.pageNum).join(',');
+      rows.push([item.code, `"${pagesStr}"`, item.pages.length, `"${stName}"`, `"${stGrade}"`]);
     });
 
     const csvContent = '\uFEFF' + rows.map(r => r.join(';')).join('\r\n');

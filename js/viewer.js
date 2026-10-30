@@ -33,12 +33,47 @@ function updateUIState() {
   els.qRoleSub.classList.toggle('on', cfg.role === 'subsequent');
   els.qRoleSkip.classList.toggle('on', cfg.role === 'skip');
 
+  // Populate & sync the exam assignment selector in the quick bar
+  if (els.qTestAssign) {
+    const isFirst = cfg.role === 'first';
+    els.qTestAssign.disabled = isFirst || !state.totalPages;
+    const vLbl = state.lang === 'en' ? 'Exam' : 'Verifica';
+    const autoLbl = state.lang === 'en'
+      ? `Auto (${vLbl} #${ctxInfo.testIndex})`
+      : `Auto (${vLbl} #${ctxInfo.testIndex})`;
+
+    els.qTestAssign.innerHTML = '';
+    if (isFirst) {
+      const opt = document.createElement('option');
+      opt.value = 'first';
+      opt.textContent = `${vLbl} #${ctxInfo.testIndex} (${state.lang === 'en' ? 'starts here' : 'inizia qui'})`;
+      els.qTestAssign.appendChild(opt);
+    } else {
+      const autoOpt = document.createElement('option');
+      autoOpt.value = 'auto';
+      autoOpt.textContent = autoLbl;
+      els.qTestAssign.appendChild(autoOpt);
+      for (let i = 1; i <= groups.length; i++) {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = `${vLbl} #${i} (P.${groups[i - 1].firstPageNum})`;
+        els.qTestAssign.appendChild(opt);
+      }
+      const hasValidAssign = cfg.assignedTest !== null && cfg.assignedTest !== undefined && cfg.assignedTest >= 1 && cfg.assignedTest <= groups.length;
+      els.qTestAssign.value = hasValidAssign ? String(cfg.assignedTest) : 'auto';
+    }
+  }
+
   const roleLabel = cfg.role === 'first'
     ? t('roleFirstFull')
     : (cfg.role === 'subsequent' ? `${t('roleSubFull')} (P.${ctxInfo.pageInTest} · ${state.secondPageStamp.mode})` : t('roleSkipFull'));
 
+  const manualBadge = (cfg.role !== 'first' && cfg.assignedTest !== null && cfg.assignedTest !== undefined)
+    ? ` <span style="opacity:.85">⇄</span>`
+    : '';
+
   els.readout.innerHTML = `
-    <span class="full">${t('readoutTest')} #${ctxInfo.testIndex} ${t('readoutOf')} ${ctxInfo.totalTests}</span>
+    <span class="full">${t('readoutTest')} #${ctxInfo.testIndex} ${t('readoutOf')} ${ctxInfo.totalTests}${manualBadge}</span>
     <span class="item"><span>${t('readoutPage')}:</span><b>${state.currentPage}/${state.totalPages}</b></span>
     <span class="sep">·</span>
     <span class="item"><span>${t('readoutRole')}:</span><b>${roleLabel}</b></span>
@@ -68,21 +103,52 @@ function renderPageMapGrid(groups) {
   for (let p = 1; p <= state.totalPages; p++) {
     const cfg = state.pageConfigs[p];
     const info = pageToTest[p] || { testIdx: 1, pInTest: 1 };
-    const chip = document.createElement('button');
+    const chip = document.createElement('div');
     chip.className = 'page-chip' + (p === state.currentPage ? ' active' : '');
+    chip.setAttribute('role', 'button');
+    chip.tabIndex = 0;
+
     const roleTag = cfg.role === 'first'
       ? (state.lang === 'en' ? '🔴 1st pg' : '🔴 1ª pag')
       : (cfg.role === 'subsequent' ? (state.lang === 'en' ? '🟣 2nd+ pg' : '🟣 2ª+ pag') : (state.lang === 'en' ? '⚪ Skip' : '⚪ Intatta'));
+
+    let assignHtml = '';
+    if (cfg.role === 'first') {
+      assignHtml = `<small>${vfx} #${info.testIdx} (P.1)</small>`;
+    } else {
+      let opts = `<option value="auto">${vfx} #${info.testIdx} (auto)</option>`;
+      for (let i = 1; i <= groups.length; i++) {
+        const sel = (cfg.assignedTest === i) ? ' selected' : '';
+        opts += `<option value="${i}"${sel}>→ ${vfx} #${i}</option>`;
+      }
+      assignHtml = `<select class="chip-assign" data-page="${p}" title="${t('assignTooltip')}">${opts}</select>`;
+    }
+
     chip.innerHTML = `
       <b>${pfx} ${p}</b>
-      <small>${vfx} #${info.testIdx}</small>
       <small>${roleTag}</small>
+      ${assignHtml}
     `;
-    chip.addEventListener('click', () => {
+
+    chip.addEventListener('click', (e) => {
+      if (e.target && e.target.tagName.toLowerCase() === 'select') return;
       state.currentPage = p;
       renderCurrentPage();
       updateUIState();
     });
+
+    const selEl = chip.querySelector('.chip-assign');
+    if (selEl) {
+      selEl.addEventListener('click', (e) => e.stopPropagation());
+      selEl.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const val = e.target.value;
+        cfg.assignedTest = val === 'auto' ? null : parseInt(val, 10);
+        updateUIState();
+        drawSelectionOverlay();
+      });
+    }
+
     els.pageListGrid.appendChild(chip);
   }
 }

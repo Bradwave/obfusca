@@ -146,6 +146,10 @@ async function processAndAnonymizePdf(onCompleteSwitchTab) {
     state.singleTestPdfs = [];
     let processedPages = 0;
 
+    // Build single-student docs (always grouped per student) and collect rendered/copied pages
+    // so the master anonPdfDoc can either regroup by student (default) or preserve original PDF page order.
+    const pageMetaByNum = {};
+
     for (let gIdx = 0; gIdx < outputOrder.length; gIdx++) {
       const group = outputOrder[gIdx];
       const singleDoc = await PDFDocument.create();
@@ -232,9 +236,12 @@ async function processAndAnonymizePdf(onCompleteSwitchTab) {
           const jpegDataUrl = workCanvas.toDataURL('image/jpeg', 0.89);
           const origViewport = pdfPage.getViewport({ scale: 1.0 });
 
-          const jpgImage = await anonPdfDoc.embedJpg(jpegDataUrl);
-          const newPage = anonPdfDoc.addPage([origViewport.width, origViewport.height]);
-          newPage.drawImage(jpgImage, { x: 0, y: 0, width: origViewport.width, height: origViewport.height });
+          pageMetaByNum[pageNumber] = {
+            mode: 'rasterize',
+            jpegDataUrl,
+            width: origViewport.width,
+            height: origViewport.height
+          };
 
           const singleJpg = await singleDoc.embedJpg(jpegDataUrl);
           const sPage = singleDoc.addPage([origViewport.width, origViewport.height]);
@@ -314,13 +321,43 @@ async function processAndAnonymizePdf(onCompleteSwitchTab) {
             }
           };
 
-          await applyOverlayToDoc(anonPdfDoc, anonFontBold);
+          pageMetaByNum[pageNumber] = {
+            mode: 'overlay',
+            applyOverlayToDoc
+          };
+
           await applyOverlayToDoc(singleDoc, singleFontBold);
         }
       }
 
       const singleBytes = await singleDoc.save();
       state.singleTestPdfs.push({ code: group.code, bytes: singleBytes });
+    }
+
+    // Assemble master anonPdfDoc:
+    // - If state.regroupPages is true (default) or state.shuffleTests is true, pages are grouped by student exam
+    // - Otherwise, preserve the original 1..totalPages order from the source PDF
+    const masterPageSequence = [];
+    if (state.regroupPages || state.shuffleTests) {
+      outputOrder.forEach(group => {
+        group.pages.forEach(pObj => masterPageSequence.push(pObj.pageNum));
+      });
+    } else {
+      for (let p = 1; p <= state.totalPages; p++) {
+        if (pageMetaByNum[p]) masterPageSequence.push(p);
+      }
+    }
+
+    for (const pNum of masterPageSequence) {
+      const meta = pageMetaByNum[pNum];
+      if (!meta) continue;
+      if (meta.mode === 'rasterize') {
+        const jpgImage = await anonPdfDoc.embedJpg(meta.jpegDataUrl);
+        const newPage = anonPdfDoc.addPage([meta.width, meta.height]);
+        newPage.drawImage(jpgImage, { x: 0, y: 0, width: meta.width, height: meta.height });
+      } else {
+        await meta.applyOverlayToDoc(anonPdfDoc, anonFontBold);
+      }
     }
 
     els.progressText.textContent = '95%';
@@ -361,8 +398,9 @@ async function processAndAnonymizePdf(onCompleteSwitchTab) {
         legPage.drawRectangle({ x: 40, y: yCursor - rowHeight + 8, width: 515, height: rowHeight, color: rgb(0.97, 0.96, 0.99) });
       }
 
+      const pagesListStr = item.pages.map(p => p.pageNum).join(', ');
       legPage.drawText(item.code, { x: 48, y: yCursor - 18, size: 12, font: legFontMono, color: rgb(0.35, 0.1, 0.65) });
-      legPage.drawText(`Pag. orig. ${item.firstPageNum} (${item.pages.length}p)`, { x: 48, y: yCursor - 32, size: 8, font: legFontReg, color: rgb(0.45, 0.45, 0.45) });
+      legPage.drawText(`Pag. orig.: ${pagesListStr} (${item.pages.length}p)`, { x: 48, y: yCursor - 32, size: 8, font: legFontReg, color: rgb(0.45, 0.45, 0.45) });
 
       if (item.cropDataUrl) {
         const pngImage = await legendPdfDoc.embedPng(item.cropDataUrl);
@@ -421,10 +459,11 @@ function populateResultsTable(items) {
     const imgHtml = item.cropDataUrl
       ? `<img src="${item.cropDataUrl}" alt="${item.code}" class="crop-thumb">`
       : `<span class="note">—</span>`;
+    const pagesListStr = item.pages.map(p => p.pageNum).join(', ');
     tr.innerHTML = `
       <td>
         <b style="color:var(--accent)">${item.code}</b>
-        <div class="note" style="margin:0">P.${item.firstPageNum} (${item.pages.length}f)</div>
+        <div class="note" style="margin:0">P.${pagesListStr} (${item.pages.length}f)</div>
       </td>
       <td>${imgHtml}</td>
       <td>

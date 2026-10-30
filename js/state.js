@@ -34,6 +34,7 @@ const state = {
   codePrefix: 'VER-',
   printCodeOnFirst: true,
   shuffleTests: false,
+  regroupPages: true,
   securityMode: 'rasterize',
   renderScale: 2.0,
 
@@ -87,6 +88,8 @@ const els = {
   qRoleFirst: $('qRoleFirst'),
   qRoleSub: $('qRoleSub'),
   qRoleSkip: $('qRoleSkip'),
+  qAssignWrap: $('qAssignWrap'),
+  qTestAssign: $('qTestAssign'),
   btnAddExtraMask: $('btnAddExtraMask'),
   btnClearExtraMasks: $('btnClearExtraMasks'),
 
@@ -98,6 +101,7 @@ const els = {
   prefixPreview: $('prefixPreview'),
   tgPrintCodeOnFirst: $('tgPrintCodeOnFirst'),
   tgShuffleTests: $('tgShuffleTests'),
+  tgRegroupPages: $('tgRegroupPages'),
   securityModeSeg: $('securityModeSeg'),
   securityNote: $('securityNote'),
   dpiSeg: $('dpiSeg'),
@@ -146,6 +150,7 @@ function initPageConfigs() {
     const isFirst = ((p - 1) % ppt) === 0;
     state.pageConfigs[p] = {
       role: isFirst ? 'first' : 'subsequent',
+      assignedTest: null,
       rect: { ...state.defaultNormRect },
       extraRects: []
     };
@@ -156,9 +161,10 @@ function syncBatchRoles() {
   const ppt = Math.max(1, state.pagesPerTest);
   for (let p = 1; p <= state.totalPages; p++) {
     if (!state.pageConfigs[p]) {
-      state.pageConfigs[p] = { role: 'first', rect: { ...state.defaultNormRect }, extraRects: [] };
+      state.pageConfigs[p] = { role: 'first', assignedTest: null, rect: { ...state.defaultNormRect }, extraRects: [] };
     }
     state.pageConfigs[p].role = (((p - 1) % ppt) === 0) ? 'first' : 'subsequent';
+    state.pageConfigs[p].assignedTest = null;
   }
 }
 
@@ -166,6 +172,7 @@ function getCurrentPageConfig() {
   if (!state.pageConfigs[state.currentPage]) {
     state.pageConfigs[state.currentPage] = {
       role: 'first',
+      assignedTest: null,
       rect: { ...state.defaultNormRect },
       extraRects: []
     };
@@ -197,41 +204,52 @@ function setActiveNameRect(newRect, pageNum = state.currentPage) {
 
 function computeTestGroups() {
   const groups = [];
-  let currentGroup = null;
 
+  // Pass 1: every 'first' page establishes a distinct student exam group
   for (let p = 1; p <= state.totalPages; p++) {
-    const cfg = state.pageConfigs[p] || { role: 'first', rect: { ...state.defaultNormRect }, extraRects: [] };
+    const cfg = state.pageConfigs[p] || { role: 'first', assignedTest: null, rect: { ...state.defaultNormRect }, extraRects: [] };
     if (cfg.role === 'first') {
-      currentGroup = {
+      groups.push({
         originalIndex: groups.length + 1,
         firstPageNum: p,
         pages: [{ pageNum: p, role: 'first' }]
-      };
-      groups.push(currentGroup);
-    } else if (cfg.role === 'subsequent') {
-      if (!currentGroup) {
-        currentGroup = {
-          originalIndex: groups.length + 1,
-          firstPageNum: p,
-          pages: [{ pageNum: p, role: 'subsequent' }]
-        };
-        groups.push(currentGroup);
-      } else {
-        currentGroup.pages.push({ pageNum: p, role: 'subsequent' });
-      }
-    } else if (cfg.role === 'skip') {
-      if (currentGroup) {
-        currentGroup.pages.push({ pageNum: p, role: 'skip' });
-      } else {
-        currentGroup = {
-          originalIndex: groups.length + 1,
-          firstPageNum: p,
-          pages: [{ pageNum: p, role: 'skip' }]
-        };
-        groups.push(currentGroup);
-      }
+      });
     }
   }
+
+  // Fallback if user set zero 'first' pages across the document
+  if (groups.length === 0 && state.totalPages > 0) {
+    groups.push({
+      originalIndex: 1,
+      firstPageNum: 1,
+      pages: []
+    });
+  }
+
+  // Pass 2: attach 'subsequent' and 'skip' pages either to their explicitly assignedTest
+  // (1-based index into groups) or to the nearest preceding 'first' group (auto flow)
+  let currentGroupIdx = 0;
+  for (let p = 1; p <= state.totalPages; p++) {
+    const cfg = state.pageConfigs[p] || { role: 'first', assignedTest: null, rect: { ...state.defaultNormRect }, extraRects: [] };
+    if (cfg.role === 'first') {
+      const foundIdx = groups.findIndex(g => g.firstPageNum === p);
+      if (foundIdx !== -1) currentGroupIdx = foundIdx;
+    } else {
+      let targetIdx = currentGroupIdx;
+      if (cfg.assignedTest !== null && cfg.assignedTest !== undefined) {
+        const manualIdx = parseInt(cfg.assignedTest, 10) - 1;
+        if (!Number.isNaN(manualIdx) && manualIdx >= 0 && manualIdx < groups.length) {
+          targetIdx = manualIdx;
+        }
+      }
+      groups[targetIdx].pages.push({
+        pageNum: p,
+        role: cfg.role,
+        manualAssign: cfg.assignedTest !== null && cfg.assignedTest !== undefined
+      });
+    }
+  }
+
   return groups;
 }
 
