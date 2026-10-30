@@ -177,7 +177,18 @@ function dismissPrivacyPrompt(e) {
 }
 
 function initUI() {
-  // System theme sync
+  // Restore saved theme & language from localStorage (fallback to system theme)
+  try {
+    const savedTheme = localStorage.getItem('obfusca_theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+    const savedLang = localStorage.getItem('obfusca_lang');
+    if (savedLang === 'it' || savedLang === 'en') {
+      state.lang = savedLang;
+    }
+  } catch (_) {}
+
   syncThemeIcon();
   if (window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeIcon);
@@ -186,6 +197,9 @@ function initUI() {
     els.themeBtn.addEventListener('click', () => {
       const nextTheme = isEffectiveDark() ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', nextTheme);
+      try {
+        localStorage.setItem('obfusca_theme', nextTheme);
+      } catch (_) {}
       syncThemeIcon();
     });
   }
@@ -206,6 +220,9 @@ function initUI() {
   if (els.langBtn) {
     els.langBtn.addEventListener('click', () => {
       state.lang = state.lang === 'it' ? 'en' : 'it';
+      try {
+        localStorage.setItem('obfusca_lang', state.lang);
+      } catch (_) {}
       applyLanguage();
     });
   }

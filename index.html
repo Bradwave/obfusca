@@ -6,6 +6,16 @@
 <title>Obfusca — Anonimizzatore verifiche PDF</title>
 <meta name="description" content="Anonimizzatore locale GDPR per verifiche scritte in PDF: oscuramento nomi, codici univoci, modalità batch e pagina singola, pronto per la correzione AI.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="alternate icon" href="favicon.ico" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+try {
+  const savedTheme = localStorage.getItem('obfusca_theme');
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }
+} catch (_) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
