@@ -39,10 +39,13 @@ function updateUIState() {
 
   els.readout.innerHTML = `
     <span class="full">${t('readoutTest')} #${ctxInfo.testIndex} ${t('readoutOf')} ${ctxInfo.totalTests}</span>
-    <span class="wide">File</span><b class="wide">${state.fileName.length > 20 ? state.fileName.slice(0, 18) + '…' : state.fileName}</b>
-    <span>${t('readoutPage')}</span><b>${state.currentPage} / ${state.totalPages}</b>
-    <span>${t('readoutRole')}</span><b>${roleLabel}</b>
-    <span class="wide">${t('readoutExtra')}</span><b class="wide">${cfg.extraRects.length}</b>
+    <span class="item"><span>${t('readoutPage')}:</span><b>${state.currentPage}/${state.totalPages}</b></span>
+    <span class="sep">·</span>
+    <span class="item"><span>${t('readoutRole')}:</span><b>${roleLabel}</b></span>
+    <span class="sep wide">·</span>
+    <span class="item wide"><span class="lbl">File:</span><b>${state.fileName.length > 22 ? state.fileName.slice(0, 20) + '…' : state.fileName}</b></span>
+    <span class="sep wide">·</span>
+    <span class="item wide"><span class="lbl">${t('readoutExtra')}:</span><b>${cfg.extraRects.length}</b></span>
   `;
 
   renderPageMapGrid(groups);

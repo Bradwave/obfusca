@@ -78,26 +78,29 @@ try {
     <div class="canvas-wrap card" id="canvasWrap">
       <input id="pdfFileInput" type="file" accept="application/pdf" hidden>
 
-      <!-- Readout flottante -->
-      <div class="readout-holder" id="readoutHolder" hidden>
+      <!-- Barra informativa non-sovrapposta in cima al visore -->
+      <div class="readout-strip" id="readoutHolder" hidden>
         <div class="readout" id="readout"></div>
       </div>
 
-      <!-- Unica dropzone principale / stato iniziale -->
-      <div class="empty-state" id="emptyState">
-        <div class="empty-icon"><span class="ms" style="font-size:28px;width:28px">cloud_upload</span></div>
-        <h2 id="i18nEmptyTitle">Trascina qui il PDF delle verifiche</h2>
-        <p id="i18nEmptyDesc">Oppure clicca per selezionare il file dal dispositivo. Puoi trascinare un nuovo PDF in qualsiasi momento o generare un documento di prova.</p>
-        <div class="row" style="justify-content:center">
-          <label for="pdfFileInput" class="btn primary" style="cursor:pointer"><span class="ms">upload_file</span><span id="i18nBtnUploadEmpty">Scegli file PDF</span></label>
-          <button class="btn warn" id="btnSampleEmpty"><span class="ms">auto_awesome</span><span id="i18nBtnSampleEmpty">Genera PDF di prova</span></button>
+      <!-- Area scrollabile del foglio PDF / Dropzone -->
+      <div class="canvas-scroll">
+        <!-- Unica dropzone principale / stato iniziale -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon"><span class="ms" style="font-size:28px;width:28px">cloud_upload</span></div>
+          <h2 id="i18nEmptyTitle">Trascina qui il PDF delle verifiche</h2>
+          <p id="i18nEmptyDesc">Oppure clicca per selezionare il file dal dispositivo. Puoi trascinare un nuovo PDF in qualsiasi momento o generare un documento di prova.</p>
+          <div class="row" style="justify-content:center">
+            <label for="pdfFileInput" class="btn primary" style="cursor:pointer"><span class="ms">upload_file</span><span id="i18nBtnUploadEmpty">Scegli file PDF</span></label>
+            <button class="btn warn" id="btnSampleEmpty"><span class="ms">auto_awesome</span><span id="i18nBtnSampleEmpty">Genera PDF di prova</span></button>
+          </div>
         </div>
-      </div>
 
-      <!-- Canvas doppio (PDF + overlay interattivo con maniglie) -->
-      <div class="canvas-stage-inner" id="canvasInner" hidden>
-        <canvas id="pdfRenderCanvas"></canvas>
-        <canvas id="selectionOverlayCanvas"></canvas>
+        <!-- Canvas doppio (PDF + overlay interattivo con maniglie) -->
+        <div class="canvas-stage-inner" id="canvasInner" hidden>
+          <canvas id="pdfRenderCanvas"></canvas>
+          <canvas id="selectionOverlayCanvas"></canvas>
+        </div>
       </div>
     </div>
 
