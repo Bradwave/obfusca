@@ -1,4 +1,4 @@
-/* Layout: stage (toolbar · canvas · quick controls) beside a tabbed panel (Setup · 2nd Pg · Pages · Export). Sibling of Pendulum Lab / Quadrature: tiles, ink borders, hard shadows, purple color scheme. */
+/* Layout: stage (toolbar · canvas · quick controls) beside a tabbed panel (Setup · 2nd Pg · Pages · Export): tiles, ink borders, hard shadows, purple color scheme. */
 :root{
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
@@ -759,7 +759,7 @@ dialog ul{padding-left:18px;margin:4px 0}
 .dlg-word{font-size:20px;margin-bottom:12px}
 kbd{font-family:inherit;font-size:10.5px;border:1.5px solid currentColor;padding:0 4px;background:var(--surface2)}
 
-/* Responsive & Mobile Layouts (mirroring Pendulum Lab's compact behavior) */
+/* Responsive & Mobile Layouts */
 @media (max-width:960px){
   .top{
     padding-block:8px 2px;

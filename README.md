@@ -1,6 +1,6 @@
 # Obfusca
 
-A 100% local, GDPR-safe PDF exam anonymizer built for teachers and AI-assisted grading workflows. Sibling of [Pendulum Lab](../pendulum-lab): no build step, no backend—plain HTML, CSS and JavaScript. Vibecoded with Gemini, with <3.
+A 100% local, GDPR-safe PDF exam anonymizer built for teachers and AI-assisted grading workflows. No build step, no backend—plain HTML, CSS and JavaScript. Vibecoded with Gemini, with <3.
 
 ## Features
 
