@@ -10,9 +10,12 @@
   --ink:#1F0D3D;
   --muted:#634B8A;
   --accent:#9333EA;
+  --accent-hover:#7E22CE;
   --onaccent:#FAF7FF;
   --tile2:#F59E0B;
+  --tile2-hover:#D97706;
   --danger:#E11D48;
+  --danger-hover:#BE123C;
   --success:#0D9488;
   --gridline:rgba(31,13,61,.15);
   color-scheme:light;
@@ -22,13 +25,16 @@
     --bg:#150A2A;
     --bgline:rgba(216,196,248,.07);
     --surface:#221242;
-    --surface2:#2E1A57;
+    --surface2:#311C5E;
     --ink:#F3ECFF;
     --muted:#B69EE0;
     --accent:#A855F7;
+    --accent-hover:#C084FC;
     --onaccent:#150A2A;
     --tile2:#FBBF24;
+    --tile2-hover:#FCD34D;
     --danger:#FB7185;
+    --danger-hover:#FDA4AF;
     --success:#2DD4BF;
     --gridline:rgba(243,236,255,.12);
     color-scheme:dark;
@@ -38,13 +44,16 @@
   --bg:#150A2A;
   --bgline:rgba(216,196,248,.07);
   --surface:#221242;
-  --surface2:#2E1A57;
+  --surface2:#311C5E;
   --ink:#F3ECFF;
   --muted:#B69EE0;
   --accent:#A855F7;
+  --accent-hover:#C084FC;
   --onaccent:#150A2A;
   --tile2:#FBBF24;
+  --tile2-hover:#FCD34D;
   --danger:#FB7185;
+  --danger-hover:#FDA4AF;
   --success:#2DD4BF;
   --gridline:rgba(243,236,255,.12);
   color-scheme:dark;
@@ -217,6 +226,7 @@ button,select,input,textarea{font-family:inherit;color:inherit}
   cursor:pointer;
   flex:none;
 }
+.icon-btn:hover{background:var(--surface2)}
 .icon-btn:active{transform:translate(3px,3px);box-shadow:none}
 .lang-btn{
   font-weight:700;
@@ -281,9 +291,11 @@ button,select,input,textarea{font-family:inherit;color:inherit}
 .btn:active:not(:disabled){transform:translate(3px,3px);box-shadow:none}
 .btn:disabled{opacity:.42;cursor:not-allowed;box-shadow:none}
 .btn.primary{background:var(--accent);color:var(--onaccent)}
-.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn.primary:hover:not(:disabled){background:var(--accent-hover);color:var(--onaccent)}
 .btn.warn{background:var(--tile2);color:#1F0D3D}
+.btn.warn:hover:not(:disabled){background:var(--tile2-hover);color:#1F0D3D}
 .btn.danger{background:var(--danger);color:#fff}
+.btn.danger:hover:not(:disabled){background:var(--danger-hover);color:#fff}
 
 .seg{
   display:inline-flex;
@@ -304,6 +316,7 @@ button,select,input,textarea{font-family:inherit;color:inherit}
   min-height:30px;
   touch-action:manipulation;
 }
+.seg button:hover:not(.on){background:var(--surface2)}
 .seg button+button{border-left:2px solid var(--ink)}
 .seg button.on{background:var(--ink);color:var(--surface)}
 .seg.small button{padding:4px 8px;font-size:11px;min-height:26px}
@@ -440,6 +453,7 @@ button,select,input,textarea{font-family:inherit;color:inherit}
   flex:none;
   touch-action:manipulation;
 }
+.lg:hover:not(.on){background:var(--surface2)}
 .lg.on{background:var(--ink);color:var(--surface)}
 .lg .dot-ind{width:9px;height:9px;border:1.5px solid currentColor;display:inline-block;flex:none}
 
@@ -518,6 +532,7 @@ button,select,input,textarea{font-family:inherit;color:inherit}
   flex:none;
 }
 .tab .ms{font-size:17px;width:17px}
+.tab:hover:not(.on){background:var(--surface2);opacity:1}
 .tab.on{
   background:var(--surface);
   opacity:1;
@@ -707,6 +722,7 @@ input[type=text],input[type=number],select{
   gap:2px;
   text-align:left;
 }
+.page-chip:hover:not(.active){background:var(--surface2)}
 .page-chip.active{
   background:var(--accent);
   color:var(--onaccent);
