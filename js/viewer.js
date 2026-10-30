@@ -33,22 +33,17 @@ function updateUIState() {
   els.qRoleSub.classList.toggle('on', cfg.role === 'subsequent');
   els.qRoleSkip.classList.toggle('on', cfg.role === 'skip');
 
-  // Populate & sync the exam assignment selector in the quick bar
-  if (els.qTestAssign) {
+  // Populate & sync the exam assignment selector in the top readout strip
+  // (only visible when current page is a follow-up / skipped page so it never clutters 1st pages)
+  if (els.qTestAssign && els.qAssignWrap) {
     const isFirst = cfg.role === 'first';
+    els.qAssignWrap.hidden = isFirst || !state.totalPages;
     els.qTestAssign.disabled = isFirst || !state.totalPages;
-    const vLbl = state.lang === 'en' ? 'Exam' : 'Verifica';
-    const autoLbl = state.lang === 'en'
-      ? `Auto (${vLbl} #${ctxInfo.testIndex})`
-      : `Auto (${vLbl} #${ctxInfo.testIndex})`;
+    const vLbl = state.lang === 'en' ? 'Exam' : 'Ver.';
+    const autoLbl = `${t('assignAuto')} (${vLbl} #${ctxInfo.testIndex})`;
 
     els.qTestAssign.innerHTML = '';
-    if (isFirst) {
-      const opt = document.createElement('option');
-      opt.value = 'first';
-      opt.textContent = `${vLbl} #${ctxInfo.testIndex} (${state.lang === 'en' ? 'starts here' : 'inizia qui'})`;
-      els.qTestAssign.appendChild(opt);
-    } else {
+    if (!isFirst) {
       const autoOpt = document.createElement('option');
       autoOpt.value = 'auto';
       autoOpt.textContent = autoLbl;
@@ -56,12 +51,17 @@ function updateUIState() {
       for (let i = 1; i <= groups.length; i++) {
         const opt = document.createElement('option');
         opt.value = String(i);
-        opt.textContent = `${vLbl} #${i} (P.${groups[i - 1].firstPageNum})`;
+        opt.textContent = `→ ${vLbl} #${i} (P.${groups[i - 1].firstPageNum})`;
         els.qTestAssign.appendChild(opt);
       }
       const hasValidAssign = cfg.assignedTest !== null && cfg.assignedTest !== undefined && cfg.assignedTest >= 1 && cfg.assignedTest <= groups.length;
       els.qTestAssign.value = hasValidAssign ? String(cfg.assignedTest) : 'auto';
     }
+  }
+
+  // Only show the "Pulisci extra" button when the current page actually has extra boxes
+  if (els.btnClearExtraMasks) {
+    els.btnClearExtraMasks.hidden = !cfg.extraRects.length;
   }
 
   const roleLabel = cfg.role === 'first'

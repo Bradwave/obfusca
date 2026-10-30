@@ -78,9 +78,13 @@ try {
     <div class="canvas-wrap card" id="canvasWrap">
       <input id="pdfFileInput" type="file" accept="application/pdf" hidden>
 
-      <!-- Barra informativa non-sovrapposta in cima al visore -->
+      <!-- Barra informativa non-sovrapposta in cima al visore (con selettore verifica integrato) -->
       <div class="readout-strip" id="readoutHolder" hidden>
         <div class="readout" id="readout"></div>
+        <label class="assign-wrap" id="qAssignWrap" title="Assegna questa pagina a una verifica specifica (anche fuori ordine)">
+          <span id="i18nQAssignLbl">Ver.:</span>
+          <select id="qTestAssign" disabled aria-label="Assegna pagina a verifica"></select>
+        </label>
       </div>
 
       <!-- Area scrollabile del foglio PDF / Dropzone -->
@@ -109,22 +113,18 @@ try {
       <div class="row" style="gap:6px">
         <span style="font-weight:700;font-size:11px;color:var(--muted)" id="i18nCurrPageLabel">PAGINA CORRENTE:</span>
         <button class="lg on" id="qRoleFirst" title="Imposta questa pagina come 1ª pagina di una verifica (con oscuramento nome)">
-          <span class="dot-ind" style="background:var(--danger)"></span><span id="i18nQRoleFirst">1ª pag. (oscura nome)</span>
+          <span class="dot-ind" style="background:var(--danger)"></span><span id="i18nQRoleFirst">1ª pag.</span>
         </button>
         <button class="lg" id="qRoleSub" title="Imposta questa pagina come pagina successiva (applica solo micro-etichetta o nulla)">
-          <span class="dot-ind" style="background:var(--accent)"></span><span id="i18nQRoleSub">2ª+ pag. (seguito)</span>
+          <span class="dot-ind" style="background:var(--accent)"></span><span id="i18nQRoleSub">2ª+ pag.</span>
         </button>
         <button class="lg" id="qRoleSkip" title="Ignora questa pagina (nessun box né timbro)">
-          <span class="dot-ind" style="background:var(--muted)"></span><span id="i18nQRoleSkip">Lascia intatta</span>
+          <span class="dot-ind" style="background:var(--muted)"></span><span id="i18nQRoleSkip">Intatta</span>
         </button>
-        <label class="assign-wrap" id="qAssignWrap" title="Assegna questa pagina a una verifica specifica (anche fuori ordine)">
-          <span id="i18nQAssignLbl">Ver.:</span>
-          <select id="qTestAssign" disabled aria-label="Assegna pagina a verifica"></select>
-        </label>
       </div>
       <div class="row" style="gap:6px">
         <button class="btn" id="btnAddExtraMask" disabled title="Aggiungi un rettangolo bianco extra su questa pagina per coprire un secondo nome o firma"><span class="ms">add_box</span><span id="i18nBtnAddExtra">+ Box extra</span></button>
-        <button class="btn" id="btnClearExtraMasks" disabled title="Rimuovi i box extra di questa pagina"><span class="ms">ink_eraser</span><span id="i18nBtnClearExtra">Pulisci extra</span></button>
+        <button class="btn" id="btnClearExtraMasks" hidden disabled title="Rimuovi i box extra di questa pagina"><span class="ms">ink_eraser</span><span id="i18nBtnClearExtra">Pulisci extra</span></button>
       </div>
     </div>
   </section>
